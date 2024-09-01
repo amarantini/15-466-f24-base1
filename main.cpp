@@ -62,8 +62,9 @@ int main(int argc, char **argv) {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
 	//create window:
+	std::string window_title = "Inked!";
 	SDL_Window *window = SDL_CreateWindow(
-		"gp23 game1: remember to change your title", //TODO: remember to set a title for your game!
+		window_title.c_str(), //TODO: remember to set a title for your game!
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		2*PPU466::ScreenWidth + 8, 2*PPU466::ScreenHeight + 8, //TODO: modify window size if you'd like
 		SDL_WINDOW_OPENGL
@@ -125,10 +126,24 @@ int main(int argc, char **argv) {
 	};
 	on_resize();
 
+	float timer = 30.0f;
+	bool is_ended = false;
+
 	//This will loop until the current mode is set to null:
 	while (Mode::current) {
 		//every pass through the game loop creates one frame of output
 		//  by performing three steps:
+		if (! is_ended) {
+			if(timer >= 0.0f) {
+				std::string new_title = window_title + " (" + std::to_string(int(timer)) + ")";
+				SDL_SetWindowTitle(window, new_title.c_str());
+			} else {
+				std::string text = Mode::current->end();
+				is_ended = true;
+				std::string new_title = window_title + " (" + text + ")";
+				SDL_SetWindowTitle(window, new_title.c_str());
+			}
+		}
 
 		{ //(1) process any events that are pending
 			static SDL_Event evt;
@@ -162,11 +177,13 @@ int main(int argc, char **argv) {
 			if (!Mode::current) break;
 		}
 
-		{ //(2) call the current mode's "update" function to deal with elapsed time:
+		if(!is_ended) { //(2) call the current mode's "update" function to deal with elapsed time:
 			auto current_time = std::chrono::high_resolution_clock::now();
 			static auto previous_time = current_time;
 			float elapsed = std::chrono::duration< float >(current_time - previous_time).count();
 			previous_time = current_time;
+
+			timer -= elapsed;
 
 			//if frames are taking a very long time to process,
 			//lag to avoid spiral of death:

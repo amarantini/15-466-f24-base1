@@ -7,6 +7,19 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <random>
+#include <bitset>
+
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/hash.hpp"
+
+struct u8vec4_hash
+{
+    std::size_t operator()(const glm::u8vec4& v) const {
+		// std::array<uint32_t,4> arr = {uint32_t(v[0]), uint32_t(v[1]), uint32_t(v[2]), uint32_t(v[3])};
+        return std::hash<std::string>()(std::to_string(uint32_t(v[0]))+","+std::to_string(uint32_t(v[1]))+","+std::to_string(uint32_t(v[2]))+","+std::to_string(uint32_t(v[3])));
+    }
+};
 
 PlayMode::PlayMode() {
 	//TODO:
@@ -17,91 +30,52 @@ PlayMode::PlayMode() {
 	//   and check that script into your repository.
 
 	//Also, *don't* use these tiles in your game:
+	pallette_idx = 1;
+	tile_idx = 16;
+	sprite_idx = 0;
+	background_tile_idx = 0;
+	background_pallete_idx = 0;
+	
 
-	{ //use tiles 0-16 as some weird dot pattern thing:
-		std::array< uint8_t, 8*8 > distance;
-		for (uint32_t y = 0; y < 8; ++y) {
-			for (uint32_t x = 0; x < 8; ++x) {
-				float d = glm::length(glm::vec2((x + 0.5f) - 4.0f, (y + 0.5f) - 4.0f));
-				d /= glm::length(glm::vec2(4.0f, 4.0f));
-				distance[x+8*y] = uint8_t(std::max(0,std::min(255,int32_t( 255.0f * d ))));
-			}
-		}
-		for (uint32_t index = 0; index < 16; ++index) {
-			PPU466::Tile tile;
-			uint8_t t = uint8_t((255 * index) / 16);
-			for (uint32_t y = 0; y < 8; ++y) {
-				uint8_t bit0 = 0;
-				uint8_t bit1 = 0;
-				for (uint32_t x = 0; x < 8; ++x) {
-					uint8_t d = distance[x+8*y];
-					if (d > t) {
-						bit0 |= (1 << x);
-					} else {
-						bit1 |= (1 << x);
-					}
-				}
-				tile.bit0[y] = bit0;
-				tile.bit1[y] = bit1;
-			}
-			ppu.tile_table[index] = tile;
+	// load player sprite
+	player1.player_at = glm::vec2(256.0f-16.0f, 0.0f);
+	load_sprite2x2(player1.player_sprite, "resources/sprites/octopus.png", uint8_t(player1.player_at.x), uint8_t(player1.player_at.y));
+	
+	player2.player_at = glm::vec2(0.0f);
+	load_sprite2x2(player2.player_sprite, "resources/sprites/octopus2.png", uint8_t(player2.player_at.x), uint8_t(player2.player_at.y));
+	
+	// load crown sprite
+	load_sprite2x2(crown, "resources/sprites/crown.png", 0, 240);
+
+	// load splash tiles
+	load_tile2x2(player1.splash_tile, "resources/sprites/splash.png");
+	load_tile2x2(player2.splash_tile, "resources/sprites/splash2.png");
+
+	// load potion sprite
+	load_sprite2x2(potion.potion_sprite, "resources/sprites/potion.png", 0, 240);
+
+	// set initial background
+	ppu.background_color = glm::u8vec4(230, 196, 166, 0xff);
+
+	for (uint32_t y = 0; y < 8; ++y) {
+		for (uint32_t x = 0; x < 8; ++x) {
+			ppu.tile_table[background_tile_idx].bit0 = {1,1,1,1,1,1,1,1};
+			ppu.tile_table[background_tile_idx].bit1 = {0,0,0,0,0,0,0,0};
 		}
 	}
 
-	//use sprite 32 as a "player":
-	ppu.tile_table[32].bit0 = {
-		0b01111110,
-		0b11111111,
-		0b11111111,
-		0b11111111,
-		0b11111111,
-		0b11111111,
-		0b11111111,
-		0b01111110,
-	};
-	ppu.tile_table[32].bit1 = {
-		0b00000000,
-		0b00000000,
-		0b00011000,
-		0b00100100,
-		0b00000000,
-		0b00100100,
-		0b00000000,
-		0b00000000,
-	};
-
-	//makes the outside of tiles 0-16 solid:
 	ppu.palette_table[0] = {
 		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
-		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
-	};
-
-	//makes the center of tiles 0-16 solid:
-	ppu.palette_table[1] = {
 		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
 		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
-	};
-
-	//used for the player:
-	ppu.palette_table[7] = {
-		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
-		glm::u8vec4(0xff, 0xff, 0x00, 0xff),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
-	};
-
-	//used for the misc other sprites:
-	ppu.palette_table[6] = {
-		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
-		glm::u8vec4(0x88, 0x88, 0xff, 0xff),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
 		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
 	};
-
+	
+	for (uint32_t y = 0; y < PPU466::BackgroundHeight; ++y) {
+		for (uint32_t x = 0; x < PPU466::BackgroundWidth; ++x) {
+			ppu.background[x+PPU466::BackgroundWidth*y] = 0;
+		}
+	}
 }
 
 PlayMode::~PlayMode() {
@@ -126,6 +100,30 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.downs += 1;
 			down.pressed = true;
 			return true;
+		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+			space.downs += 1;
+			space.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_TAB) {
+			tab.downs += 1;
+			tab.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_a) {
+			keya.downs += 1;
+			keya.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_w) {
+			keyw.downs += 1;
+			keyw.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_s) {
+			keys.downs += 1;
+			keys.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_d) {
+			keyd.downs += 1;
+			keyd.pressed = true;
+			return true;
 		}
 	} else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_LEFT) {
@@ -140,6 +138,24 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		} else if (evt.key.keysym.sym == SDLK_DOWN) {
 			down.pressed = false;
 			return true;
+		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+			space.pressed = false;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_TAB) {
+			tab.pressed = false;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_a) {
+			keya.pressed = false;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_w) {
+			keyw.pressed = false;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_s) {
+			keys.pressed = false;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_d) {
+			keyd.pressed = false;
+			return true;
 		}
 	}
 
@@ -147,65 +163,293 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
+	// generate potion with a probability
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<> dis(0.0, 1.0);
+	if(dis(gen) < 0.001 && !potion.is_active) {
+		gen_potion();
+	}
 
-	//slowly rotates through [0,1):
-	// (will be used to set background color)
-	background_fade += elapsed / 10.0f;
-	background_fade -= std::floor(background_fade);
+	// Player 1
+	if (left.pressed) player1.player_at.x -= player1.player_speed * elapsed;
+	if (right.pressed) player1.player_at.x += player1.player_speed * elapsed;
+	if (down.pressed) player1.player_at.y -= player1.player_speed * elapsed;
+	if (up.pressed) player1.player_at.y += player1.player_speed * elapsed;
+	player1.player_at.x = std::clamp(player1.player_at.x, 0.0f, float(PPU466::ScreenWidth-16));
+	player1.player_at.y = std::clamp(player1.player_at.y, 0.0f, float(PPU466::ScreenHeight-16));
+	if(space.pressed) {
+		player1.is_splash = true;
+	}
 
-	constexpr float PlayerSpeed = 30.0f;
-	if (left.pressed) player_at.x -= PlayerSpeed * elapsed;
-	if (right.pressed) player_at.x += PlayerSpeed * elapsed;
-	if (down.pressed) player_at.y -= PlayerSpeed * elapsed;
-	if (up.pressed) player_at.y += PlayerSpeed * elapsed;
+	// Player 2
+	if(keya.pressed) player2.player_at.x -= player2.player_speed * elapsed;
+	if(keyd.pressed) player2.player_at.x += player2.player_speed * elapsed;
+	if(keys.pressed) player2.player_at.y -= player2.player_speed * elapsed;
+	if(keyw.pressed) player2.player_at.y += player2.player_speed * elapsed;
+	player2.player_at.x = std::clamp(player2.player_at.x, 0.0f, float(PPU466::ScreenWidth-16));
+	player2.player_at.y = std::clamp(player2.player_at.y, 0.0f, float(PPU466::ScreenHeight-16));
+	if(tab.pressed) {
+		player2.is_splash = true;
+	}
+
+	// check potion collision
+	if(potion.is_active) {
+		check_potion_collision();
+	}
 
 	//reset button press counters:
 	left.downs = 0;
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
+	space.downs = 0;
+	keya.downs = 0;
+	keyw.downs = 0;
+	keys.downs = 0;
+	keyd.downs = 0;
+	tab.downs = 0;
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//--- set ppu state based on game state ---
-
-	//background color will be some hsv-like fade:
-	ppu.background_color = glm::u8vec4(
-		std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 0.0f / 3.0f) ) ) ))),
-		std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 1.0f / 3.0f) ) ) ))),
-		std::min(255,std::max(0,int32_t(255 * 0.5f * (0.5f + std::sin( 2.0f * M_PI * (background_fade + 2.0f / 3.0f) ) ) ))),
-		0xff
-	);
-
-	//tilemap gets recomputed every frame as some weird plasma thing:
-	//NOTE: don't do this in your game! actually make a map or something :-)
-	for (uint32_t y = 0; y < PPU466::BackgroundHeight; ++y) {
-		for (uint32_t x = 0; x < PPU466::BackgroundWidth; ++x) {
-			//TODO: make weird plasma thing
-			ppu.background[x+PPU466::BackgroundWidth*y] = ((x+y)%16);
-		}
+	
+	if(player1.is_splash) {
+		paint_splash(player1);
 	}
-
-	//background scroll:
-	ppu.background_position.x = int32_t(-0.5f * player_at.x);
-	ppu.background_position.y = int32_t(-0.5f * player_at.y);
+	if(player2.is_splash) {
+		paint_splash(player2);
+	}
 
 	//player sprite:
-	ppu.sprites[0].x = int8_t(player_at.x);
-	ppu.sprites[0].y = int8_t(player_at.y);
-	ppu.sprites[0].index = 32;
-	ppu.sprites[0].attributes = 7;
-
-	//some other misc sprites:
-	for (uint32_t i = 1; i < 63; ++i) {
-		float amt = (i + 2.0f * background_fade) / 62.0f;
-		ppu.sprites[i].x = int8_t(0.5f * PPU466::ScreenWidth + std::cos( 2.0f * M_PI * amt * 5.0f + 0.01f * player_at.x) * 0.4f * PPU466::ScreenWidth);
-		ppu.sprites[i].y = int8_t(0.5f * PPU466::ScreenHeight + std::sin( 2.0f * M_PI * amt * 3.0f + 0.01f * player_at.y) * 0.4f * PPU466::ScreenWidth);
-		ppu.sprites[i].index = 32;
-		ppu.sprites[i].attributes = 6;
-		if (i % 2) ppu.sprites[i].attributes |= 0x80; //'behind' bit
-	}
+	paint_sprite(player1.player_sprite, player1.player_at.x, player1.player_at.y);
+	paint_sprite(player2.player_sprite, player2.player_at.x, player2.player_at.y);
 
 	//--- actually draw ---
 	ppu.draw(drawable_size);
+}
+
+void PlayMode::load_sprite2x2(Sprite2x2 &sprite, std::string file_path, uint8_t pos_x, uint8_t pos_y) {
+	glm::uvec2 size(16,16);
+	std::vector< glm::u8vec4 > data;
+	enum OriginLocation origin = LowerLeftOrigin;
+	load_png(data_path(file_path), &size, &data, origin);
+	assert(data.size() == 16 * 16);
+
+	// find all colors in the sprite
+	PPU466::Palette& pallete = ppu.palette_table[pallette_idx];
+	std::unordered_map<glm::u8vec4, uint8_t> colors;
+	std::vector<uint8_t> data_as_index; // convert rgba to index in pallete
+	data_as_index.reserve(data.size());
+	for(auto& pixel : data) {
+		if(pixel[3]==0){
+			// transparent pixel
+			data_as_index.push_back(uint8_t(0));
+		} else {
+			if(colors.count(pixel) == 0) {
+				colors[pixel] = uint8_t(colors.size()+1);
+				
+			}
+			data_as_index.push_back(colors[pixel]);
+		}
+	}
+
+	assert(colors.size() <= 3);
+	for(auto itr=colors.begin(); itr!=colors.end(); itr++) {
+		pallete[itr->second] = itr->first;
+	}
+
+	// create sprite2x2 and record the sprite indices
+	for(uint32_t i=0; i<4; i++) {
+		sprite.indices[i] = sprite_idx+i;
+	}
+
+	// load to tile table
+	for (int tile_y = 0; tile_y < 2; ++tile_y) {  // bottom and top tiles
+        for (int tile_x = 0; tile_x < 2; ++tile_x) {  // left and right tiles
+            // loop through each pixel in the 8x8 tile
+            for (int y = 0; y < 8; ++y) {
+				ppu.tile_table[tile_idx].bit0[y] = uint8_t(0);
+				ppu.tile_table[tile_idx].bit1[y] = uint8_t(0);
+                for (int x = 0; x < 8; ++x) {
+                    // calculate the source pixel position in the 16x16 image
+                    int src_x = tile_x * 8 + x;
+                    int src_y = tile_y * 8 + y;
+                    int src_index = src_y * 16 + src_x;
+					uint8_t color_index = data_as_index[src_index];
+					uint8_t bit0 = color_index & 1;
+					uint8_t bit1 = (color_index >> 1) & 1;
+
+                    // Copy the pixel to the corresponding tile
+                    ppu.tile_table[tile_idx].bit0[y] |= ((bit0) << x);
+					ppu.tile_table[tile_idx].bit1[y] |= ((bit1) << x);
+                }
+            }
+			
+			ppu.sprites[sprite_idx].index = tile_idx;
+			ppu.sprites[sprite_idx].attributes = pallette_idx;
+			ppu.sprites[sprite_idx].x = uint8_t(pos_x + tile_x * 8);
+			ppu.sprites[sprite_idx].y = uint8_t(pos_y + tile_y * 8);
+			
+			sprite_idx++;
+			tile_idx++;
+        }
+    }
+
+	pallette_idx++;
+	std::cout<<"Successfully loaded sprite2x2: "<<file_path<<std::endl;
+}
+
+void PlayMode::load_tile2x2(Tile2x2 &tile, std::string file_path) {
+	glm::uvec2 size(16,16);
+	std::vector< glm::u8vec4 > data;
+	enum OriginLocation origin = LowerLeftOrigin;
+	load_png(data_path(file_path), &size, &data, origin);
+	assert(data.size() == 16 * 16);
+
+	// find all colors in the sprite
+	PPU466::Palette& pallete = ppu.palette_table[pallette_idx];
+	std::unordered_map<glm::u8vec4, uint8_t> colors;
+	std::vector<uint8_t> data_as_index; // convert rgba to index in pallete
+	data_as_index.reserve(data.size());
+	for(auto& pixel : data) {
+		if(pixel[3]==0){
+			// transparent pixel
+			data_as_index.push_back(uint8_t(0));
+		} else {
+			if(colors.count(pixel) == 0) {
+				colors[pixel] = uint8_t(colors.size()+1);
+				
+			}
+			data_as_index.push_back(colors[pixel]);
+		}
+	}
+
+	assert(colors.size() <= 3);
+	for(auto itr=colors.begin(); itr!=colors.end(); itr++) {
+		pallete[itr->second] = itr->first;
+	}
+
+	// create tile2x2 and record the tile indices
+	for(uint32_t i=0; i<4; i++) {
+		tile.indices[i] = tile_idx+i;
+	}
+	tile.pallete_idx = pallette_idx;
+
+	// load to tile table
+	for (int tile_y = 0; tile_y < 2; ++tile_y) {  // bottom and top tiles
+        for (int tile_x = 0; tile_x < 2; ++tile_x) {  // left and right tiles
+            // loop through each pixel in the 8x8 tile
+            for (int y = 0; y < 8; ++y) {
+				ppu.tile_table[tile_idx].bit0[y] = uint8_t(0);
+				ppu.tile_table[tile_idx].bit1[y] = uint8_t(0);
+                for (int x = 0; x < 8; ++x) {
+                    // calculate the source pixel position in the 16x16 image
+                    int src_x = tile_x * 8 + x;
+                    int src_y = tile_y * 8 + y;
+                    int src_index = src_y * 16 + src_x;
+					uint8_t color_index = data_as_index[src_index];
+					uint8_t bit0 = color_index & 1;
+					uint8_t bit1 = (color_index >> 1) & 1;
+
+                    // Copy the pixel to the corresponding tile
+                    ppu.tile_table[tile_idx].bit0[y] |= ((bit0) << x);
+					ppu.tile_table[tile_idx].bit1[y] |= ((bit1) << x);
+                }
+            }
+			
+			tile_idx++;
+        }
+    }
+
+	pallette_idx++;
+	std::cout<<"Successfully loaded tile2x2: "<<file_path<<std::endl;
+}
+
+void PlayMode::paint_sprite(Sprite2x2& sprite, uint8_t x, uint8_t y) {
+	for (int tile_y = 0; tile_y < 2; ++tile_y) {  // bottom and top tiles
+		for (int tile_x = 0; tile_x < 2; ++tile_x) {  // left and right tiles
+			ppu.sprites[sprite.indices[tile_x+2*tile_y]].x = uint8_t(x + tile_x * 8);
+			ppu.sprites[sprite.indices[tile_x+2*tile_y]].y = uint8_t(y + tile_y * 8);
+		}
+	}
+}
+
+void PlayMode::paint_splash(PlayerState& player) {
+	// get a random tile
+	Tile2x2& splash_tile = player.splash_tile;
+	// get tile index from position
+	uint32_t x = (uint32_t(player.player_at.x) % PPU466::ScreenWidth) / 8;
+	uint32_t y = (uint32_t(player.player_at.y) % PPU466::ScreenHeight) / 8;
+	if(x % 2 == 1) x--;
+	if(y % 2 == 1) y--;
+	for (int tile_y = 0; tile_y < 2; ++tile_y) {  // bottom and top tiles
+		for (int tile_x = 0; tile_x < 2; ++tile_x) {  // left and right tiles
+			ppu.background[(x+tile_x)+PPU466::BackgroundWidth*(y+tile_y)] = ((splash_tile.pallete_idx << 8) | splash_tile.indices[tile_x+2*tile_y]); 
+			
+		}
+	}
+
+	player.is_splash = false;
+}
+
+
+
+std::string PlayMode::end(){
+	// count the number of tiles painted by each player
+	auto count_painted = [&](Tile2x2& splash_tile) {
+		uint32_t count = 0;
+		for(uint16_t& background_tile: ppu.background) {
+			uint32_t tile_idx = background_tile & 255;
+			if(tile_idx == splash_tile.indices[0] || tile_idx == splash_tile.indices[1] || tile_idx == splash_tile.indices[2] || tile_idx == splash_tile.indices[3]) {
+					count++;
+				}
+		}
+		return count;
+	};
+
+	uint32_t player1_count = count_painted(player1.splash_tile);
+	uint32_t player2_count = count_painted(player2.splash_tile);
+	if(player1_count > player2_count) {
+		std::cout<<"Player 1 wins!"<<std::endl;
+		paint_sprite(crown, player1.player_at.x, player1.player_at.y+16);
+		return "Player 1 wins!";
+	} else if(player1_count < player2_count) {
+		std::cout<<"Player 2 wins!"<<std::endl;
+		paint_sprite(crown, player2.player_at.x, player2.player_at.y+16);
+		return "Player 2 wins!";
+	} else {
+		std::cout<<"It's a tie!"<<std::endl;
+		return "It's a tie!";
+	}
+}
+
+void PlayMode::gen_potion() {
+	// Spawn a potion at a random location
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<> dis_x(0, PPU466::ScreenWidth-16);
+	std::uniform_int_distribution<> dis_y(0, PPU466::ScreenHeight-16);
+	potion.position = glm::vec2(dis_x(gen), dis_y(gen));
+	potion.is_active = true;
+	paint_sprite(potion.potion_sprite, uint8_t(potion.position.x), uint8_t(potion.position.y));
+}
+
+void PlayMode::check_potion_collision() {
+	// Check if player 1 collides with the potion
+	if(player1.player_at.x < potion.position.x + 16 && player1.player_at.x + 16 > potion.position.x && player1.player_at.y < potion.position.y + 16 && player1.player_at.y + 16 > potion.position.y) {
+		player1.get_potion();
+		std::cout<<"Player 1 got a potion!"<<std::endl;
+		potion.is_active = false;
+	}
+
+	// Check if player 2 collides with the potion
+	if(player2.player_at.x < potion.position.x + 16 && player2.player_at.x + 16 > potion.position.x && player2.player_at.y < potion.position.y + 16 && player2.player_at.y + 16 > potion.position.y) {
+		player2.get_potion();
+		potion.is_active = false;
+	}
+
+	if(!potion.is_active) {
+		paint_sprite(potion.potion_sprite, 0, 240);
+	}
 }
