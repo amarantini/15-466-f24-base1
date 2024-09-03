@@ -2,6 +2,7 @@
 #include "Mode.hpp"
 #include "data_path.hpp"
 #include "load_save_png.hpp"
+#include "preprocess.hpp"
 
 #include <glm/glm.hpp>
 
@@ -11,6 +12,7 @@
 // A large sprite that consists of 2x2 standard sprites
 struct Sprite2x2 {
     std::array<uint32_t, 4> indices; // index into sprite table
+	uint32_t pallete_idx;
 };
 
 // A large tile that consists of 2x2 standard tiles
@@ -50,10 +52,12 @@ struct PlayMode : Mode {
 	//----- loading assets -----
 	struct PlayerState {
 		glm::vec2 player_at = glm::vec2(0.0f);
-		Sprite2x2 player_sprite;
+		std::array<Sprite2x2,2> player_sprites;
 		Tile2x2 splash_tile;
 		bool is_splash = false;
 		float player_speed = 50.0f;
+		uint32_t player_sprite_idx_active = 0;
+		uint32_t player_sprite_idx_inactive = 1;
 
 		void get_potion() {
 			player_speed += 10.0f;
@@ -68,14 +72,13 @@ struct PlayMode : Mode {
 		bool is_active = false;
 	} potion;
 	
-
-	uint32_t pallette_idx; // next pallette index available
 	uint32_t tile_idx; // next tile index available
 	uint32_t sprite_idx;
 	uint32_t background_tile_idx;
 	uint32_t background_pallete_idx;
-	void load_sprite2x2(Sprite2x2 &sprite, std::string file_path, uint8_t pos_x, uint8_t pos_y);
-	void load_tile2x2(Tile2x2 &tile, std::string file_path);
+	void load_pallete();
+	void load_sprite2x2(Sprite2x2 &sprite, std::string filename, uint8_t pos_x, uint8_t pos_y);
+	void load_tile2x2(Tile2x2 &tile, std::string filename);
 
 	//----- helper function -----
 	void paint_sprite(Sprite2x2& sprite, uint8_t x, uint8_t y);

@@ -101,7 +101,8 @@ const game_objs = [
 	maek.CPP('data_path.cpp'),
 	maek.CPP('Mode.cpp'),
 	maek.CPP('gl_compile_program.cpp'),
-	maek.CPP('GL.cpp')
+	maek.CPP('GL.cpp'),
+	maek.CPP('preprocess.cpp'),
 ];
 
 //the '[exeFile =] LINK(objFiles, exeFileBase, [, options])' links an array of objects into an executable:
@@ -321,9 +322,9 @@ function init_maek() {
 
 		task.label = `CPP ${objFile}`;
 
-		if (objFile in maek.tasks) {
-			throw new Error(`Task ${task.label} purports to create ${objFile}, but ${maek.tasks[objFile].label} already creates that file.`);
-		}
+		// if (objFile in maek.tasks) {
+		// 	throw new Error(`Task ${task.label} purports to create ${objFile}, but ${maek.tasks[objFile].label} already creates that file.`);
+		// }
 		maek.tasks[objFile] = task;
 
 		return objFile;

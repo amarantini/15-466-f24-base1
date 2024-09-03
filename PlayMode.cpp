@@ -1,4 +1,5 @@
 #include "PlayMode.hpp"
+#include "read_write_chunk.hpp"
 
 //for the GL_ERRORS() macro:
 #include "gl_errors.hpp"
@@ -36,23 +37,31 @@ PlayMode::PlayMode() {
 	background_tile_idx = 0;
 	background_pallete_idx = 0;
 	
+	if(!check_binary_file_existence()) {
+		preprocess_sprite();
+	}
+
+	// load pallete
+	load_pallete();
 
 	// load player sprite
 	player1.player_at = glm::vec2(256.0f-16.0f, 0.0f);
-	load_sprite2x2(player1.player_sprite, "resources/sprites/octopus.png", uint8_t(player1.player_at.x), uint8_t(player1.player_at.y));
+	load_sprite2x2(player1.player_sprites[0], "octopus1", uint8_t(player1.player_at.x), uint8_t(player1.player_at.y));
+	load_sprite2x2(player1.player_sprites[1], "octopus1_move", uint8_t(player1.player_at.x), uint8_t(player1.player_at.y));
 	
 	player2.player_at = glm::vec2(0.0f);
-	load_sprite2x2(player2.player_sprite, "resources/sprites/octopus2.png", uint8_t(player2.player_at.x), uint8_t(player2.player_at.y));
+	load_sprite2x2(player2.player_sprites[0], "octopus2", uint8_t(player2.player_at.x), uint8_t(player2.player_at.y));
+	load_sprite2x2(player2.player_sprites[1], "octopus2_move", uint8_t(player2.player_at.x), uint8_t(player2.player_at.y));
 	
 	// load crown sprite
-	load_sprite2x2(crown, "resources/sprites/crown.png", 0, 240);
+	load_sprite2x2(crown, "crown", 0, 240);
 
 	// load splash tiles
-	load_tile2x2(player1.splash_tile, "resources/sprites/splash.png");
-	load_tile2x2(player2.splash_tile, "resources/sprites/splash2.png");
+	load_tile2x2(player1.splash_tile, "splash");
+	load_tile2x2(player2.splash_tile, "splash2");
 
 	// load potion sprite
-	load_sprite2x2(potion.potion_sprite, "resources/sprites/potion.png", 0, 240);
+	load_sprite2x2(potion.potion_sprite, "potion", 0, 240);
 
 	// set initial background
 	ppu.background_color = glm::u8vec4(230, 196, 166, 0xff);
@@ -176,6 +185,9 @@ void PlayMode::update(float elapsed) {
 	if (right.pressed) player1.player_at.x += player1.player_speed * elapsed;
 	if (down.pressed) player1.player_at.y -= player1.player_speed * elapsed;
 	if (up.pressed) player1.player_at.y += player1.player_speed * elapsed;
+	if(left.pressed || right.pressed || down.pressed || up.pressed) {
+		std::swap(player1.player_sprite_idx_active, player1.player_sprite_idx_inactive);
+	}
 	player1.player_at.x = std::clamp(player1.player_at.x, 0.0f, float(PPU466::ScreenWidth-16));
 	player1.player_at.y = std::clamp(player1.player_at.y, 0.0f, float(PPU466::ScreenHeight-16));
 	if(space.pressed) {
@@ -187,6 +199,9 @@ void PlayMode::update(float elapsed) {
 	if(keyd.pressed) player2.player_at.x += player2.player_speed * elapsed;
 	if(keys.pressed) player2.player_at.y -= player2.player_speed * elapsed;
 	if(keyw.pressed) player2.player_at.y += player2.player_speed * elapsed;
+	if(keya.pressed || keyd.pressed || keys.pressed || keyw.pressed) {
+		std::swap(player2.player_sprite_idx_active, player2.player_sprite_idx_inactive);
+	}
 	player2.player_at.x = std::clamp(player2.player_at.x, 0.0f, float(PPU466::ScreenWidth-16));
 	player2.player_at.y = std::clamp(player2.player_at.y, 0.0f, float(PPU466::ScreenHeight-16));
 	if(tab.pressed) {
@@ -222,42 +237,25 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	}
 
 	//player sprite:
-	paint_sprite(player1.player_sprite, player1.player_at.x, player1.player_at.y);
-	paint_sprite(player2.player_sprite, player2.player_at.x, player2.player_at.y);
+	paint_sprite(player1.player_sprites[player1.player_sprite_idx_active], player1.player_at.x, player1.player_at.y);
+	// hide inactive sprite
+	paint_sprite(player1.player_sprites[player1.player_sprite_idx_inactive], 0, 240);
+
+	paint_sprite(player2.player_sprites[player2.player_sprite_idx_active], player2.player_at.x, player2.player_at.y);
+	// hide inactive sprite
+	paint_sprite(player2.player_sprites[player2.player_sprite_idx_inactive], 0, 240);
 
 	//--- actually draw ---
 	ppu.draw(drawable_size);
 }
 
-void PlayMode::load_sprite2x2(Sprite2x2 &sprite, std::string file_path, uint8_t pos_x, uint8_t pos_y) {
-	glm::uvec2 size(16,16);
-	std::vector< glm::u8vec4 > data;
-	enum OriginLocation origin = LowerLeftOrigin;
-	load_png(data_path(file_path), &size, &data, origin);
-	assert(data.size() == 16 * 16);
-
-	// find all colors in the sprite
-	PPU466::Palette& pallete = ppu.palette_table[pallette_idx];
-	std::unordered_map<glm::u8vec4, uint8_t> colors;
-	std::vector<uint8_t> data_as_index; // convert rgba to index in pallete
-	data_as_index.reserve(data.size());
-	for(auto& pixel : data) {
-		if(pixel[3]==0){
-			// transparent pixel
-			data_as_index.push_back(uint8_t(0));
-		} else {
-			if(colors.count(pixel) == 0) {
-				colors[pixel] = uint8_t(colors.size()+1);
-				
-			}
-			data_as_index.push_back(colors[pixel]);
-		}
-	}
-
-	assert(colors.size() <= 3);
-	for(auto itr=colors.begin(); itr!=colors.end(); itr++) {
-		pallete[itr->second] = itr->first;
-	}
+void PlayMode::load_sprite2x2(Sprite2x2 &sprite, std::string filename, uint8_t pos_x, uint8_t pos_y) {
+	std::vector<uint8_t> data_as_index; 
+	std::ifstream from(data_path(SPRITE_FILEPATH+filename+".bin").c_str(), std::ios::binary);
+	read_chunk(from, SPRITE_MAGIC, &data_as_index);
+	uint32_t pallette_idx = uint32_t(data_as_index[0]);
+	std::cout<<filename<<" pallette idx: "<<pallette_idx<<std::endl;
+	data_as_index.erase(data_as_index.begin());
 
 	// create sprite2x2 and record the sprite indices
 	for(uint32_t i=0; i<4; i++) {
@@ -296,39 +294,15 @@ void PlayMode::load_sprite2x2(Sprite2x2 &sprite, std::string file_path, uint8_t 
         }
     }
 
-	pallette_idx++;
-	std::cout<<"Successfully loaded sprite2x2: "<<file_path<<std::endl;
+	std::cout<<"Successfully loaded sprite2x2: "<<filename<<std::endl;
 }
 
-void PlayMode::load_tile2x2(Tile2x2 &tile, std::string file_path) {
-	glm::uvec2 size(16,16);
-	std::vector< glm::u8vec4 > data;
-	enum OriginLocation origin = LowerLeftOrigin;
-	load_png(data_path(file_path), &size, &data, origin);
-	assert(data.size() == 16 * 16);
-
-	// find all colors in the sprite
-	PPU466::Palette& pallete = ppu.palette_table[pallette_idx];
-	std::unordered_map<glm::u8vec4, uint8_t> colors;
-	std::vector<uint8_t> data_as_index; // convert rgba to index in pallete
-	data_as_index.reserve(data.size());
-	for(auto& pixel : data) {
-		if(pixel[3]==0){
-			// transparent pixel
-			data_as_index.push_back(uint8_t(0));
-		} else {
-			if(colors.count(pixel) == 0) {
-				colors[pixel] = uint8_t(colors.size()+1);
-				
-			}
-			data_as_index.push_back(colors[pixel]);
-		}
-	}
-
-	assert(colors.size() <= 3);
-	for(auto itr=colors.begin(); itr!=colors.end(); itr++) {
-		pallete[itr->second] = itr->first;
-	}
+void PlayMode::load_tile2x2(Tile2x2 &tile, std::string filename) {
+	std::vector<uint8_t> data_as_index; 
+	std::ifstream from(data_path(SPRITE_FILEPATH+filename+".bin").c_str(), std::ios::binary);
+	read_chunk(from, SPRITE_MAGIC, &data_as_index);
+	uint32_t pallette_idx = uint32_t(data_as_index[0]);
+	data_as_index.erase(data_as_index.begin());
 
 	// create tile2x2 and record the tile indices
 	for(uint32_t i=0; i<4; i++) {
@@ -362,8 +336,7 @@ void PlayMode::load_tile2x2(Tile2x2 &tile, std::string file_path) {
         }
     }
 
-	pallette_idx++;
-	std::cout<<"Successfully loaded tile2x2: "<<file_path<<std::endl;
+	std::cout<<"Successfully loaded tile2x2: "<<filename<<std::endl;
 }
 
 void PlayMode::paint_sprite(Sprite2x2& sprite, uint8_t x, uint8_t y) {
@@ -451,5 +424,18 @@ void PlayMode::check_potion_collision() {
 
 	if(!potion.is_active) {
 		paint_sprite(potion.potion_sprite, 0, 240);
+	}
+}
+
+void PlayMode::load_pallete(){
+	std::ifstream from(data_path(SPRITE_FILEPATH+"pallete.bin").c_str(), std::ios::binary);
+	std::vector<uint8_t> palletes;
+	read_chunk(from, PALLETE_MAGIC, &palletes);
+	for(uint32_t i=0; i<palette_table.size(); i++) {
+		for(uint32_t j=0; j<4; j++) {
+			for(uint32_t k=0; k<4; k++) {
+				ppu.palette_table[i][j][k] = palletes[i*16+j*4+k];
+			}
+		}
 	}
 }

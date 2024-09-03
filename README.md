@@ -10,7 +10,7 @@ Screen Shot:
 
 How Your Asset Pipeline Works:
 
-My assests include 2 octopus sprites for [player 1](dist/resources/sprites/octopus.png) and [player 2](dist/resources/sprites/octopus2.png), [splash tile for player 1](dist/resources/sprites/splash.png), [splash tile for player 2](dist/resources/sprites/splash2.png), a [crown sprite](dist/resources/sprites/crown.png) and a [potion sprite](dist/resources/sprites/potion.png). All of the sprites and tiles are 16x16 png images. My asset pipeline will load the png images, divide them into 4 tiles and save the tile indices or sprite indices in Tile2x2 struct or Sprite2x2 struct.
+My assests include 2 octopus sprites for [player 1](dist/resources/sprites/octopus1.png) and [player 2](dist/resources/sprites/octopus2.png). Each octopus has a moving animation sprite which are switched during movement ([player 1](dist/resources/sprites/octopus1_move.png) and [player 2](dist/resources/sprites/octopus2_move.png)). There are also [ink tile for player 1](dist/resources/sprites/splash.png), [ink tile for player 2](dist/resources/sprites/splash2.png), a [crown sprite](dist/resources/sprites/crown.png) and a [potion sprite](dist/resources/sprites/potion.png). All of the sprites and tiles are 16x16 png images. My asset pipeline will load the png images, preprocess them as nest-style color index array of uint8_t type and save them as local binary files. Then during the game, the binary files are loaded as sprites or just tiles. Each 16x16 sprite/tile is divided into 4 tiles and the tile indices or sprite indices are stored in a Tile2x2 struct or a Sprite2x2 struct.
 
 The splash tiles will be painted to the background.
 
@@ -20,7 +20,6 @@ Player 1 uses left, right, up, down arrow keys to control the movement, and spac
 Player 2 uses a, w, s, d to move and TAB key to paint.
 Players want to paint more grids than the opponent. 
 Players can paint over other's painted grid.
-
 A potion will be generated randomly throughout the game. The player who got the potion can move faster, thus painting more grids.
 
 This game was built with [NEST](NEST.md).
