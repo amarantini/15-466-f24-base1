@@ -50,6 +50,7 @@ struct PlayMode : Mode {
 	PPU466 ppu;
 
 	//----- loading assets -----
+	float animation_speed = 0.1f;
 	struct PlayerState {
 		glm::vec2 player_at = glm::vec2(0.0f);
 		std::array<Sprite2x2,2> player_sprites;
@@ -58,6 +59,7 @@ struct PlayMode : Mode {
 		float player_speed = 50.0f;
 		uint32_t player_sprite_idx_active = 0;
 		uint32_t player_sprite_idx_inactive = 1;
+		float time_elapsed = 0.0f;
 
 		void get_potion() {
 			player_speed += 10.0f;
@@ -72,10 +74,10 @@ struct PlayMode : Mode {
 		bool is_active = false;
 	} potion;
 	
-	uint32_t tile_idx; // next tile index available
-	uint32_t sprite_idx;
-	uint32_t background_tile_idx;
-	uint32_t background_pallete_idx;
+	uint32_t tile_idx = 16; // next tile index available
+	uint32_t sprite_idx = 0;
+	uint32_t background_tile_idx = 0;
+	uint32_t background_pallete_idx = 0;
 	void load_pallete();
 	void load_sprite2x2(Sprite2x2 &sprite, std::string filename, uint8_t pos_x, uint8_t pos_y);
 	void load_tile2x2(Tile2x2 &tile, std::string filename);

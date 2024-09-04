@@ -31,11 +31,6 @@ PlayMode::PlayMode() {
 	//   and check that script into your repository.
 
 	//Also, *don't* use these tiles in your game:
-	pallette_idx = 1;
-	tile_idx = 16;
-	sprite_idx = 0;
-	background_tile_idx = 0;
-	background_pallete_idx = 0;
 	
 	if(!check_binary_file_existence()) {
 		preprocess_sprite();
@@ -186,7 +181,11 @@ void PlayMode::update(float elapsed) {
 	if (down.pressed) player1.player_at.y -= player1.player_speed * elapsed;
 	if (up.pressed) player1.player_at.y += player1.player_speed * elapsed;
 	if(left.pressed || right.pressed || down.pressed || up.pressed) {
-		std::swap(player1.player_sprite_idx_active, player1.player_sprite_idx_inactive);
+		player1.time_elapsed += elapsed;
+		if(player1.time_elapsed > animation_speed) {
+			player1.time_elapsed -= animation_speed;
+			std::swap(player1.player_sprite_idx_active, player1.player_sprite_idx_inactive);
+		}
 	}
 	player1.player_at.x = std::clamp(player1.player_at.x, 0.0f, float(PPU466::ScreenWidth-16));
 	player1.player_at.y = std::clamp(player1.player_at.y, 0.0f, float(PPU466::ScreenHeight-16));
@@ -200,7 +199,11 @@ void PlayMode::update(float elapsed) {
 	if(keys.pressed) player2.player_at.y -= player2.player_speed * elapsed;
 	if(keyw.pressed) player2.player_at.y += player2.player_speed * elapsed;
 	if(keya.pressed || keyd.pressed || keys.pressed || keyw.pressed) {
-		std::swap(player2.player_sprite_idx_active, player2.player_sprite_idx_inactive);
+		player2.time_elapsed += elapsed;
+		if(player2.time_elapsed > animation_speed) {
+			player2.time_elapsed -= animation_speed;
+			std::swap(player2.player_sprite_idx_active, player2.player_sprite_idx_inactive);
+		}
 	}
 	player2.player_at.x = std::clamp(player2.player_at.x, 0.0f, float(PPU466::ScreenWidth-16));
 	player2.player_at.y = std::clamp(player2.player_at.y, 0.0f, float(PPU466::ScreenHeight-16));
@@ -254,7 +257,6 @@ void PlayMode::load_sprite2x2(Sprite2x2 &sprite, std::string filename, uint8_t p
 	std::ifstream from(data_path(SPRITE_FILEPATH+filename+".bin").c_str(), std::ios::binary);
 	read_chunk(from, SPRITE_MAGIC, &data_as_index);
 	uint32_t pallette_idx = uint32_t(data_as_index[0]);
-	std::cout<<filename<<" pallette idx: "<<pallette_idx<<std::endl;
 	data_as_index.erase(data_as_index.begin());
 
 	// create sprite2x2 and record the sprite indices
