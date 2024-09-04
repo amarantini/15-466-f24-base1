@@ -20,7 +20,8 @@ const std::vector<std::string> sprite_filenames = {
 };
 const std::string SPRITE_MAGIC = "sprt";
 const std::string PALLETE_MAGIC = "palt";
-const std::string SPRITE_FILEPATH = "resources/sprites/";
+const std::string SPRITE_INPUT_FILEPATH = "../sprites/";
+const std::string SPRITE_OUTPUT_FILEPATH = "resources/";
 
 static std::array< std::array< glm::u8vec4, 4 >, 8 > palette_table;
 static uint32_t pallette_idx = 1; // next pallette index available

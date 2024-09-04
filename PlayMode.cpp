@@ -254,7 +254,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 void PlayMode::load_sprite2x2(Sprite2x2 &sprite, std::string filename, uint8_t pos_x, uint8_t pos_y) {
 	std::vector<uint8_t> data_as_index; 
-	std::ifstream from(data_path(SPRITE_FILEPATH+filename+".bin").c_str(), std::ios::binary);
+	std::ifstream from(data_path(SPRITE_OUTPUT_FILEPATH+filename+".bin").c_str(), std::ios::binary);
 	read_chunk(from, SPRITE_MAGIC, &data_as_index);
 	uint32_t pallette_idx = uint32_t(data_as_index[0]);
 	data_as_index.erase(data_as_index.begin());
@@ -301,7 +301,7 @@ void PlayMode::load_sprite2x2(Sprite2x2 &sprite, std::string filename, uint8_t p
 
 void PlayMode::load_tile2x2(Tile2x2 &tile, std::string filename) {
 	std::vector<uint8_t> data_as_index; 
-	std::ifstream from(data_path(SPRITE_FILEPATH+filename+".bin").c_str(), std::ios::binary);
+	std::ifstream from(data_path(SPRITE_OUTPUT_FILEPATH+filename+".bin").c_str(), std::ios::binary);
 	read_chunk(from, SPRITE_MAGIC, &data_as_index);
 	uint32_t pallette_idx = uint32_t(data_as_index[0]);
 	data_as_index.erase(data_as_index.begin());
@@ -430,7 +430,7 @@ void PlayMode::check_potion_collision() {
 }
 
 void PlayMode::load_pallete(){
-	std::ifstream from(data_path(SPRITE_FILEPATH+"pallete.bin").c_str(), std::ios::binary);
+	std::ifstream from(data_path(SPRITE_OUTPUT_FILEPATH+"pallete.bin").c_str(), std::ios::binary);
 	std::vector<uint8_t> palletes;
 	read_chunk(from, PALLETE_MAGIC, &palletes);
 	for(uint32_t i=0; i<palette_table.size(); i++) {

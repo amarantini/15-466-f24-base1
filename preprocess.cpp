@@ -2,7 +2,7 @@
 
 void process_img(std::string filename, uint32_t existing_pallete_idx, glm::uvec2 size, enum OriginLocation origin) {
 	std::vector< glm::u8vec4 > data;
-	load_png(data_path(SPRITE_FILEPATH+filename+".png"), &size, &data, origin);
+	load_png(data_path(SPRITE_INPUT_FILEPATH+filename+".png"), &size, &data, origin);
 	assert(data.size() == size.x * size.y);
 
 	// find all colors in the sprite
@@ -43,14 +43,14 @@ void process_img(std::string filename, uint32_t existing_pallete_idx, glm::uvec2
     }
 
     // store data as binary
-    std::ofstream to(data_path(SPRITE_FILEPATH+filename+".bin").c_str(), std::ios::binary);
+    std::ofstream to(data_path(SPRITE_OUTPUT_FILEPATH+filename+".bin").c_str(), std::ios::binary);
     write_chunk(SPRITE_MAGIC, data_as_index, &to);
 	
 	std::cout<<"Successfully loaded and processed "<<filename<<std::endl;
 }
 
 void store_pallete(){
-    std::ofstream to(data_path(SPRITE_FILEPATH+"pallete.bin").c_str(), std::ios::binary);
+    std::ofstream to(data_path(SPRITE_OUTPUT_FILEPATH+"pallete.bin").c_str(), std::ios::binary);
     std::vector<uint8_t> palletes;
     for(uint32_t i=0; i<palette_table.size(); i++) {
         for(uint32_t j=0; j<4; j++) {
@@ -84,7 +84,7 @@ void preprocess_sprite() {
 
 bool check_binary_file_existence(){
     for(auto& filename : sprite_filenames) {
-        std::ifstream from(data_path(SPRITE_FILEPATH+filename.substr(0,filename.find(".png"))+".bin").c_str(), std::ios::binary);
+        std::ifstream from(data_path(SPRITE_OUTPUT_FILEPATH+filename.substr(0,filename.find(".png"))+".bin").c_str(), std::ios::binary);
         if(!from.good()) {
             return false;
         }
